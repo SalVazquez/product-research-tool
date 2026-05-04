@@ -242,26 +242,29 @@ class CompetitiveAnalyzer:
         Research how competitors solve this pain point
         Returns list of competitor analyses
         """
+        # Import here to avoid circular dependencies
+        from web_research import search_and_analyze_competitor
+
         results = []
 
         for competitor in self.competitors:
-            analysis = self._analyze_competitor(competitor, pain_point)
-            results.append(analysis)
+            try:
+                analysis = search_and_analyze_competitor(competitor, pain_point)
+                results.append(analysis)
+            except Exception as e:
+                print(f"Error analyzing {competitor}: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                # Return placeholder on error
+                results.append({
+                    'name': competitor,
+                    'has_feature': None,
+                    'description': f'Research error: {str(e)}',
+                    'pricing': 'Unknown',
+                    'limitations': [],
+                    'links': [],
+                    'notes': 'Error during research'
+                })
 
         return results
 
-    def _analyze_competitor(self, competitor: str, pain_point: str) -> Dict:
-        """Analyze a single competitor's solution"""
-        # This is a placeholder - in production, this would do web searches,
-        # scrape documentation, etc.
-
-        # For now, return a structure that the frontend can display
-        return {
-            'name': competitor,
-            'has_feature': None,  # True/False/None (unknown)
-            'description': 'Research in progress...',
-            'pricing': 'TBD',
-            'limitations': [],
-            'links': [],
-            'notes': f'Competitive research for {competitor} will be implemented with web search and documentation analysis.'
-        }
