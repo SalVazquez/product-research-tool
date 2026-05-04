@@ -40,16 +40,19 @@ class UserVoiceAnalyzer:
         themes = self._extract_themes(detailed_suggestions)
         customer_impact = self._calculate_customer_impact(detailed_suggestions)
         key_quotes = self._extract_key_quotes(detailed_suggestions)
+        pain_points = self._extract_pain_points(detailed_suggestions)
 
         return {
             'total_suggestions': len(search_results),
             'total_supporters': sum(s.get('account_supporters_count', 0) for s in search_results),
             'themes': themes,
+            'pain_points': pain_points,
             'top_customers': customer_impact['top_customers'],
             'total_arr': customer_impact['total_arr'],
             'total_customers': customer_impact['total_customers'],
             'key_quotes': key_quotes,
-            'top_suggestions': detailed_suggestions[:5]  # Top 5 for display
+            'top_suggestions': detailed_suggestions[:5],  # Top 5 for display
+            'all_suggestions': detailed_suggestions  # All suggestions for removal feature
         }
 
     def _search_uservoice(self, query: str) -> List[Dict]:
@@ -214,6 +217,62 @@ class UserVoiceAnalyzer:
             'total_customers': total_customers,
             'total_arr': total_arr
         }
+
+    def _extract_pain_points(self, suggestions: List[Dict]) -> List[Dict]:
+        """Extract the core pain points from customer feedback"""
+        pain_points_map = {}
+
+        for suggestion in suggestions:
+            title = suggestion.get('title', '').lower()
+            body = suggestion.get('body', '').lower()
+            suggestion_id = suggestion.get('id')
+
+            # Get ARR for this suggestion
+            total_arr = 0
+            for key in suggestion.keys():
+                if key.startswith('cv_') and key.endswith('.revenue'):
+                    total_arr += suggestion.get(key, 0)
+
+            # Identify pain point keywords and phrases
+            pain_indicators = {
+                'Cannot search content': ['cannot search', 'unable to search', 'can\'t search', 'search does not', 'search doesn\'t'],
+                'Missing functionality': ['does not support', 'doesn\'t support', 'not available', 'no way to', 'cannot', 'unable to'],
+                'Performance issues': ['slow', 'takes too long', 'performance', 'timeout', 'delays'],
+                'Workflow inefficiency': ['manual', 'tedious', 'time-consuming', 'inefficient', 'workaround'],
+                'Integration gaps': ['integration', 'does not integrate', 'sync', 'import', 'export'],
+                'User experience': ['confusing', 'difficult', 'hard to use', 'not intuitive', 'cumbersome']
+            }
+
+            text = f"{title} {body}"
+
+            for pain_point, keywords in pain_indicators.items():
+                if any(keyword in text for keyword in keywords):
+                    if pain_point not in pain_points_map:
+                        pain_points_map[pain_point] = {
+                            'pain_point': pain_point,
+                            'count': 0,
+                            'total_arr': 0,
+                            'examples': []
+                        }
+
+                    pain_points_map[pain_point]['count'] += 1
+                    pain_points_map[pain_point]['total_arr'] += total_arr
+
+                    if len(pain_points_map[pain_point]['examples']) < 2:
+                        pain_points_map[pain_point]['examples'].append({
+                            'title': suggestion.get('title', 'Unknown'),
+                            'id': suggestion_id,
+                            'url': suggestion.get('admin_url', '')
+                        })
+
+        # Convert to list and sort by count (primary) and ARR (secondary)
+        pain_points_list = sorted(
+            pain_points_map.values(),
+            key=lambda x: (x['count'], x['total_arr']),
+            reverse=True
+        )
+
+        return pain_points_list[:5]  # Top 5 pain points
 
     def _extract_key_quotes(self, suggestions: List[Dict]) -> List[Dict]:
         """Extract key quotes from suggestions"""

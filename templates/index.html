@@ -308,6 +308,109 @@
             background: #764ba2;
             text-decoration: none;
         }
+
+        .pain-point {
+            background: #fff3cd;
+            border-left: 4px solid #ff6b6b;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .pain-point-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .pain-point-meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .pain-point-examples {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .suggestion-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .suggestion-item.removed {
+            opacity: 0.5;
+            border-color: #fcc;
+            background: #fee;
+        }
+
+        .suggestion-info {
+            flex: 1;
+        }
+
+        .suggestion-title {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .suggestion-meta {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .suggestion-actions {
+            margin-left: 15px;
+        }
+
+        .btn-remove {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn-remove:hover {
+            background: #c82333;
+        }
+
+        .btn-restore {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn-restore:hover {
+            background: #218838;
+        }
+
+        .removed-notice {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -346,7 +449,12 @@
             <div class="section">
                 <h2>📊 Customer Feedback Analysis</h2>
 
+                <div id="removedNotice" style="display: none;"></div>
+
                 <div class="metric-grid" id="metrics"></div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">🔥 Key Pain Points</h3>
+                <div id="painPoints"></div>
 
                 <h3 style="margin-top: 30px; margin-bottom: 15px;">Key Themes</h3>
                 <div id="themes"></div>
@@ -356,6 +464,9 @@
 
                 <h3 style="margin-top: 30px; margin-bottom: 15px;">Key Quotes</h3>
                 <div id="quotes"></div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">All Suggestions (Click to Remove)</h3>
+                <div id="allSuggestions"></div>
             </div>
 
             <!-- Competitive Analysis Section -->
@@ -373,11 +484,18 @@
         const errorDiv = document.getElementById('error');
         const submitBtn = document.getElementById('submitBtn');
 
+        // Global state for removed suggestions
+        let analysisData = null;
+        let removedSuggestions = new Set();
+
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const painPoint = document.getElementById('painPoint').value.trim();
             if (!painPoint) return;
+
+            // Reset removed suggestions
+            removedSuggestions.clear();
 
             // Show loading, hide results and errors
             loading.classList.add('active');
@@ -400,6 +518,9 @@
                     throw new Error(data.error || 'Analysis failed');
                 }
 
+                // Store data globally
+                analysisData = data;
+
                 // Render results
                 renderResults(data);
 
@@ -418,26 +539,58 @@
             const uv = data.uservoice;
             const comp = data.competitive;
 
+            // Calculate adjusted metrics based on removed suggestions
+            const adjustedMetrics = calculateAdjustedMetrics(uv);
+
+            // Show notice if suggestions removed
+            const removedNotice = document.getElementById('removedNotice');
+            if (removedSuggestions.size > 0) {
+                removedNotice.style.display = 'block';
+                removedNotice.innerHTML = `<div class="removed-notice">
+                    ✓ ${removedSuggestions.size} suggestion(s) removed. Metrics updated below.
+                </div>`;
+            } else {
+                removedNotice.style.display = 'none';
+            }
+
             // Render metrics
             const metricsHTML = `
                 <div class="metric-card">
-                    <div class="metric-value">${uv.total_suggestions || 0}</div>
+                    <div class="metric-value">${adjustedMetrics.total_suggestions}</div>
                     <div class="metric-label">Total Suggestions</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">${uv.total_supporters || 0}</div>
+                    <div class="metric-value">${adjustedMetrics.total_supporters}</div>
                     <div class="metric-label">Total Supporters</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">${uv.total_customers || 0}</div>
+                    <div class="metric-value">${adjustedMetrics.total_customers}</div>
                     <div class="metric-label">Unique Customers</div>
                 </div>
                 <div class="metric-card">
-                    <div class="metric-value">$${formatNumber(uv.total_arr || 0)}</div>
+                    <div class="metric-value">$${formatNumber(adjustedMetrics.total_arr)}</div>
                     <div class="metric-label">Total ARR Impact</div>
                 </div>
             `;
             document.getElementById('metrics').innerHTML = metricsHTML;
+
+            // Render pain points
+            const painPointsHTML = (uv.pain_points || []).map(pp => `
+                <div class="pain-point">
+                    <div class="pain-point-title">⚠️ ${pp.pain_point}</div>
+                    <div class="pain-point-meta">
+                        ${pp.count} suggestions • $${formatNumber(pp.total_arr)} ARR impact
+                    </div>
+                    ${pp.examples && pp.examples.length > 0 ? `
+                        <div class="pain-point-examples">
+                            Examples: ${pp.examples.map(ex =>
+                                `<a href="${ex.url}" target="_blank">${ex.title}</a>`
+                            ).join(', ')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            document.getElementById('painPoints').innerHTML = painPointsHTML || '<p>No pain points identified</p>';
 
             // Render themes
             const themesHTML = (uv.themes || []).map(theme => `
@@ -506,6 +659,96 @@
                 </div>
             `).join('');
             document.getElementById('competitors').innerHTML = competitorsHTML || '<p>No competitive data available</p>';
+
+            // Render all suggestions with remove/restore buttons
+            const allSuggestionsHTML = (uv.all_suggestions || []).map(sugg => {
+                const suggId = sugg.id;
+                const isRemoved = removedSuggestions.has(suggId);
+                const suggARR = calculateSuggestionARR(sugg);
+
+                return `
+                    <div class="suggestion-item ${isRemoved ? 'removed' : ''}" id="sugg-${suggId}">
+                        <div class="suggestion-info">
+                            <div class="suggestion-title">
+                                <a href="${sugg.admin_url || '#'}" target="_blank">${sugg.title || 'Untitled'}</a>
+                            </div>
+                            <div class="suggestion-meta">
+                                ID: ${suggId} • ARR: $${formatNumber(suggARR)} •
+                                Supporters: ${sugg.account_supporters_count || 0}
+                            </div>
+                        </div>
+                        <div class="suggestion-actions">
+                            ${isRemoved ?
+                                `<button class="btn-restore" onclick="restoreSuggestion(${suggId})">Restore</button>` :
+                                `<button class="btn-remove" onclick="removeSuggestion(${suggId})">Remove</button>`
+                            }
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('allSuggestions').innerHTML = allSuggestionsHTML || '<p>No suggestions available</p>';
+        }
+
+        function calculateSuggestionARR(suggestion) {
+            let arr = 0;
+            for (const key in suggestion) {
+                if (key.startsWith('cv_') && key.endsWith('.revenue')) {
+                    arr += suggestion[key] || 0;
+                }
+            }
+            return arr;
+        }
+
+        function calculateAdjustedMetrics(uv) {
+            if (!uv.all_suggestions || removedSuggestions.size === 0) {
+                return {
+                    total_suggestions: uv.total_suggestions || 0,
+                    total_supporters: uv.total_supporters || 0,
+                    total_customers: uv.total_customers || 0,
+                    total_arr: uv.total_arr || 0
+                };
+            }
+
+            // Recalculate based on non-removed suggestions
+            let totalARR = 0;
+            let totalSupporters = 0;
+            let totalSuggestions = 0;
+            const customerSet = new Set();
+
+            for (const sugg of uv.all_suggestions) {
+                if (!removedSuggestions.has(sugg.id)) {
+                    totalSuggestions++;
+                    totalSupporters += sugg.account_supporters_count || 0;
+                    totalARR += calculateSuggestionARR(sugg);
+
+                    // Count unique customers (rough estimate from cv_ fields)
+                    for (const key in sugg) {
+                        if (key.startsWith('cv_') && key.endsWith('.accounts_count')) {
+                            const accounts = sugg[key] || 0;
+                            for (let i = 0; i < accounts; i++) {
+                                customerSet.add(`${key}_${i}`);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return {
+                total_suggestions: totalSuggestions,
+                total_supporters: totalSupporters,
+                total_customers: customerSet.size,
+                total_arr: totalARR
+            };
+        }
+
+        function removeSuggestion(suggestionId) {
+            removedSuggestions.add(suggestionId);
+            renderResults(analysisData);
+        }
+
+        function restoreSuggestion(suggestionId) {
+            removedSuggestions.delete(suggestionId);
+            renderResults(analysisData);
         }
 
         function formatNumber(num) {
