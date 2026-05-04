@@ -85,14 +85,41 @@ http://localhost:5000
   - `CompetitiveAnalyzer`: Researches competitor solutions (placeholder for web search)
 - **templates/index.html**: Single-page frontend with results display
 
+## Competitive Intelligence
+
+The tool includes a pre-researched competitive intelligence database for common pain points:
+
+**Supported Pain Points:**
+- Search attachments / attachment content search
+- AI / artificial intelligence features
+
+**Competitor Coverage:**
+- ✅ Intercom
+- ✅ Freshdesk
+- ✅ ServiceNow
+- ✅ Salesforce Service Cloud
+- ✅ HubSpot Service Hub
+- ✅ Jira Service Management
+- ✅ Gorgias
+- ✅ Kustomer
+
+For each competitor, the tool provides:
+- Feature availability (Yes/No)
+- Detailed description
+- Pricing tier information
+- Known limitations
+- Documentation links
+
 ## Roadmap
 
-- [ ] Implement actual competitive research (web search + documentation scraping)
+- [x] Implement competitive research with intelligence database
+- [ ] Add more pain points to competitive intel database
 - [ ] Add caching for repeated searches
 - [ ] Export results as PDF/Markdown
 - [ ] Batch analysis of multiple pain points
 - [ ] Integration with Zendesk Community posts
 - [ ] Trending analysis (feedback over time)
+- [ ] Web scraping for automatic competitive research
 
 ## Development
 
