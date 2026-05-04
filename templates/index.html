@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Research Tool</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .theme {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+        }
+
+        .theme h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .theme-meta {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .quote {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border-left: 4px solid #764ba2;
+            font-style: italic;
+        }
+
+        .quote-text {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .quote-source {
+            color: #666;
+            font-size: 14px;
+            font-style: normal;
+        }
+
+        .customer-list {
+            list-style: none;
+        }
+
+        .customer-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .customer-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .customer-arr {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .competitor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .competitor-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid #e0e0e0;
+        }
+
+        .competitor-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .competitor-detail {
+            margin-bottom: 12px;
+        }
+
+        .competitor-label {
+            font-weight: 500;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .competitor-value {
+            color: #333;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+
+        a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .suggestion-link {
+            display: inline-block;
+            margin: 5px 10px 5px 0;
+            padding: 5px 12px;
+            background: #667eea;
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .suggestion-link:hover {
+            background: #764ba2;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Product Research Tool</h1>
+            <p class="subtitle">Analyze customer feedback and competitive landscape for product pain points</p>
+        </div>
+
+        <div class="input-section">
+            <form id="analysisForm">
+                <div class="form-group">
+                    <label for="painPoint">Describe the pain point or feature area:</label>
+                    <textarea
+                        id="painPoint"
+                        name="painPoint"
+                        rows="4"
+                        placeholder="e.g., searching attachments in Zendesk, AI-powered ticket routing, custom reporting..."
+                        required
+                    ></textarea>
+                </div>
+                <button type="submit" class="btn" id="submitBtn">Analyze</button>
+            </form>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing customer feedback and competitive landscape...</p>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">This may take 30-60 seconds</p>
+        </div>
+
+        <div id="error"></div>
+
+        <div class="results" id="results">
+            <!-- UserVoice Analysis Section -->
+            <div class="section">
+                <h2>📊 Customer Feedback Analysis</h2>
+
+                <div class="metric-grid" id="metrics"></div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Key Themes</h3>
+                <div id="themes"></div>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Top Customers by ARR</h3>
+                <ul class="customer-list" id="topCustomers"></ul>
+
+                <h3 style="margin-top: 30px; margin-bottom: 15px;">Key Quotes</h3>
+                <div id="quotes"></div>
+            </div>
+
+            <!-- Competitive Analysis Section -->
+            <div class="section">
+                <h2>🏆 Competitive Analysis</h2>
+                <div class="competitor-grid" id="competitors"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('analysisForm');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const errorDiv = document.getElementById('error');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const painPoint = document.getElementById('painPoint').value.trim();
+            if (!painPoint) return;
+
+            // Show loading, hide results and errors
+            loading.classList.add('active');
+            results.classList.remove('active');
+            errorDiv.innerHTML = '';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ pain_point: painPoint })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+
+                // Render results
+                renderResults(data);
+
+                // Show results
+                results.classList.add('active');
+
+            } catch (error) {
+                errorDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                loading.classList.remove('active');
+                submitBtn.disabled = false;
+            }
+        });
+
+        function renderResults(data) {
+            const uv = data.uservoice;
+            const comp = data.competitive;
+
+            // Render metrics
+            const metricsHTML = `
+                <div class="metric-card">
+                    <div class="metric-value">${uv.total_suggestions || 0}</div>
+                    <div class="metric-label">Total Suggestions</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${uv.total_supporters || 0}</div>
+                    <div class="metric-label">Total Supporters</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">${uv.total_customers || 0}</div>
+                    <div class="metric-label">Unique Customers</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value">$${formatNumber(uv.total_arr || 0)}</div>
+                    <div class="metric-label">Total ARR Impact</div>
+                </div>
+            `;
+            document.getElementById('metrics').innerHTML = metricsHTML;
+
+            // Render themes
+            const themesHTML = (uv.themes || []).map(theme => `
+                <div class="theme">
+                    <h4>${theme.name}</h4>
+                    <div class="theme-meta">
+                        ${theme.count} suggestions • ${theme.supporters} supporters
+                    </div>
+                    ${theme.suggestions.map(s =>
+                        `<a href="${s.url}" target="_blank" class="suggestion-link">${s.title}</a>`
+                    ).join('')}
+                </div>
+            `).join('');
+            document.getElementById('themes').innerHTML = themesHTML || '<p>No themes identified</p>';
+
+            // Render top customers
+            const customersHTML = (uv.top_customers || []).map(customer => `
+                <li class="customer-item">
+                    <span class="customer-name">${customer.name}</span>
+                    <span class="customer-arr">$${formatNumber(customer.arr)} ARR</span>
+                </li>
+            `).join('');
+            document.getElementById('topCustomers').innerHTML = customersHTML || '<li>No customer data available</li>';
+
+            // Render quotes
+            const quotesHTML = (uv.key_quotes || []).map(quote => `
+                <div class="quote">
+                    <div class="quote-text">"${quote.text}"</div>
+                    <div class="quote-source">
+                        — ${quote.source}
+                        ${quote.url ? `• <a href="${quote.url}" target="_blank">View in UserVoice</a>` : ''}
+                        ${quote.arr ? `• $${formatNumber(quote.arr)} ARR` : ''}
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('quotes').innerHTML = quotesHTML || '<p>No quotes available</p>';
+
+            // Render competitors
+            const competitorsHTML = (comp || []).map(competitor => `
+                <div class="competitor-card">
+                    <div class="competitor-name">${competitor.name}</div>
+                    <div class="competitor-detail">
+                        <div class="competitor-label">Has Feature:</div>
+                        <div class="competitor-value">${competitor.has_feature === null ? 'Unknown' : (competitor.has_feature ? 'Yes' : 'No')}</div>
+                    </div>
+                    <div class="competitor-detail">
+                        <div class="competitor-label">Description:</div>
+                        <div class="competitor-value">${competitor.description || 'N/A'}</div>
+                    </div>
+                    <div class="competitor-detail">
+                        <div class="competitor-label">Pricing:</div>
+                        <div class="competitor-value">${competitor.pricing || 'N/A'}</div>
+                    </div>
+                    ${competitor.limitations && competitor.limitations.length > 0 ? `
+                        <div class="competitor-detail">
+                            <div class="competitor-label">Limitations:</div>
+                            <div class="competitor-value">${competitor.limitations.join(', ')}</div>
+                        </div>
+                    ` : ''}
+                    ${competitor.notes ? `
+                        <div class="competitor-detail">
+                            <div class="competitor-label">Notes:</div>
+                            <div class="competitor-value">${competitor.notes}</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+            document.getElementById('competitors').innerHTML = competitorsHTML || '<p>No competitive data available</p>';
+        }
+
+        function formatNumber(num) {
+            return num.toLocaleString('en-US');
+        }
+    </script>
+</body>
+</html>
