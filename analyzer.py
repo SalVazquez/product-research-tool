@@ -43,7 +43,7 @@ class UserVoiceAnalyzer:
 
         return {
             'total_suggestions': len(search_results),
-            'total_supporters': sum(s.get('supporters', 0) for s in search_results),
+            'total_supporters': sum(s.get('account_supporters_count', 0) for s in search_results),
             'themes': themes,
             'top_customers': customer_impact['top_customers'],
             'total_arr': customer_impact['total_arr'],
@@ -140,11 +140,11 @@ class UserVoiceAnalyzer:
 
             for theme_name in matched_themes:
                 themes[theme_name]['count'] += 1
-                themes[theme_name]['supporters'] += suggestion.get('supporters', 0)
+                themes[theme_name]['supporters'] += suggestion.get('account_supporters_count', 0)
                 themes[theme_name]['suggestions'].append({
                     'id': suggestion.get('id'),
                     'title': suggestion.get('title'),
-                    'url': suggestion.get('url')
+                    'url': suggestion.get('admin_url')  # Use admin_url from API
                 })
 
         # Convert to list and sort by count
@@ -162,62 +162,87 @@ class UserVoiceAnalyzer:
         return theme_list[:5]  # Top 5 themes
 
     def _calculate_customer_impact(self, suggestions: List[Dict]) -> Dict:
-        """Calculate customer impact metrics"""
-        customers = {}
+        """Calculate customer impact metrics from UserVoice custom view fields"""
+
+        # Aggregate ARR data from all suggestions
+        # UserVoice stores this in cv_* fields like cv_1m_arr.revenue, cv_commercial.revenue
+        total_arr = 0
+        total_customers = 0
+        arr_segments = []
 
         for suggestion in suggestions:
-            feedback_records = suggestion.get('feedback_records', [])
+            # Extract ARR from custom view fields
+            for key in suggestion.keys():
+                if key.startswith('cv_') and key.endswith('.revenue'):
+                    segment_name = key.replace('cv_', '').replace('.revenue', '').replace('_', ' ').title()
+                    revenue = suggestion.get(key, 0)
+                    accounts = suggestion.get(key.replace('.revenue', '.accounts_count'), 0)
 
-            for feedback in feedback_records:
-                customer_name = feedback.get('customer_name', 'Unknown')
-                account_name = feedback.get('account_name', customer_name)
-                mrr = feedback.get('mrr', 0)
+                    if revenue > 0:
+                        arr_segments.append({
+                            'name': segment_name,
+                            'arr': revenue,
+                            'accounts': accounts,
+                            'suggestion_id': suggestion.get('id')
+                        })
 
-                if account_name not in customers:
-                    customers[account_name] = {
-                        'name': account_name,
-                        'mrr': mrr,
-                        'arr': mrr * 12 if mrr else 0,
-                        'feedback_count': 0
-                    }
+        # Calculate totals from the top suggestion (most comprehensive)
+        if suggestions:
+            top_suggestion = suggestions[0]
 
-                customers[account_name]['feedback_count'] += 1
+            # Sum all cv_* revenue fields
+            for key in top_suggestion.keys():
+                if key.startswith('cv_') and key.endswith('.revenue'):
+                    total_arr += top_suggestion.get(key, 0)
+                    accounts = top_suggestion.get(key.replace('.revenue', '.accounts_count'), 0)
+                    total_customers += accounts
 
-        # Sort by ARR
-        customer_list = sorted(customers.values(), key=lambda x: x['arr'], reverse=True)
+        # Sort segments by ARR
+        arr_segments.sort(key=lambda x: x['arr'], reverse=True)
+
+        # Format top segments as "customers"
+        top_customers = []
+        for segment in arr_segments[:5]:
+            top_customers.append({
+                'name': f"{segment['name']} ({segment['accounts']} accounts)",
+                'arr': segment['arr'],
+                'accounts': segment['accounts']
+            })
 
         return {
-            'top_customers': customer_list[:5],  # Top 5 by ARR
-            'total_customers': len(customers),
-            'total_arr': sum(c['arr'] for c in customers.values())
+            'top_customers': top_customers,
+            'total_customers': total_customers,
+            'total_arr': total_arr
         }
 
     def _extract_key_quotes(self, suggestions: List[Dict]) -> List[Dict]:
-        """Extract key quotes from suggestions and feedback"""
+        """Extract key quotes from suggestions"""
         quotes = []
 
-        for suggestion in suggestions[:5]:  # Top 5 suggestions
-            # Add suggestion description as a quote
-            description = suggestion.get('description', '').strip()
-            if description and len(description) > 50:
-                quotes.append({
-                    'text': description[:500] + ('...' if len(description) > 500 else ''),
-                    'source': suggestion.get('title', 'Unknown'),
-                    'url': suggestion.get('url', ''),
-                    'supporters': suggestion.get('supporters', 0)
-                })
+        for suggestion in suggestions[:10]:  # Top 10 suggestions
+            # Use the body field from UserVoice API
+            body = suggestion.get('body', '').strip()
+            title = suggestion.get('title', 'Unknown')
+            url = suggestion.get('admin_url', '')
+            supporters = suggestion.get('account_supporters_count', 0)
 
-            # Extract quotes from feedback
-            feedback_records = suggestion.get('feedback_records', [])
-            for feedback in feedback_records[:3]:  # Top 3 feedback per suggestion
-                feedback_text = feedback.get('feedback_text', '').strip()
-                if feedback_text and len(feedback_text) > 50:
-                    quotes.append({
-                        'text': feedback_text[:300] + ('...' if len(feedback_text) > 300 else ''),
-                        'source': feedback.get('account_name', 'Customer'),
-                        'url': suggestion.get('url', ''),
-                        'arr': feedback.get('mrr', 0) * 12
-                    })
+            # Skip if body is too short
+            if not body or len(body) < 50:
+                continue
+
+            # Get ARR data for this suggestion
+            total_arr = 0
+            for key in suggestion.keys():
+                if key.startswith('cv_') and key.endswith('.revenue'):
+                    total_arr += suggestion.get(key, 0)
+
+            quotes.append({
+                'text': body[:500] + ('...' if len(body) > 500 else ''),
+                'source': title,
+                'url': url,
+                'supporters': supporters,
+                'arr': total_arr
+            })
 
         return quotes[:10]  # Return top 10 quotes
 
